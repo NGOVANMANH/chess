@@ -1,23 +1,33 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { Piece, Coordinates } from "../types.d";
-import { calculatePossibleMoves, initBoard } from "./game.init";
+import { Piece, Coordinates, Color, PieceType } from "../types.d";
+import { calculatePossibleMoves, initBoard } from "./game.helper";
 
 type GameState = {
   board: (Piece | null)[][];
   selectedPiece: Piece | null;
   possibleMoves: Coordinates[];
-  turn: string | null;
-  undoStack: { board: (Piece | null)[][]; turn: string }[];
-  redoStack: { board: (Piece | null)[][]; turn: string }[];
+  turn: Color | null;
+  undoStack: {
+    board: (Piece | null)[][];
+    turn: Color;
+    isGameOver: boolean | null;
+  }[];
+  redoStack: {
+    board: (Piece | null)[][];
+    turn: Color;
+    isGameOver: boolean | null;
+  }[];
+  isGameOver: boolean | null;
 };
 
 const initialGameState: GameState = {
   board: initBoard,
   selectedPiece: null,
   possibleMoves: [],
-  turn: "WHITE",
+  turn: Color.WHITE,
   undoStack: [],
   redoStack: [],
+  isGameOver: false,
 };
 
 const gameSlice = createSlice({
@@ -26,6 +36,12 @@ const gameSlice = createSlice({
   reducers: {
     // Select a piece and calculate its possible moves
     selectPiece(state, action: PayloadAction<Piece | null>) {
+      const isMyTurn = state.turn === action.payload?.color;
+
+      if (!isMyTurn) {
+        return;
+      }
+
       const isSamePiece =
         state.selectedPiece &&
         action.payload &&
@@ -47,25 +63,25 @@ const gameSlice = createSlice({
 
     // Move a piece to a new position
     movePiece(state, action: PayloadAction<Coordinates>) {
-      const { selectedPiece, board, turn } = state;
       const targetPosition = action.payload;
 
-      if (selectedPiece) {
-        const { x: currentX, y: currentY } = selectedPiece.position;
+      if (state.selectedPiece) {
+        const { x: currentX, y: currentY } = state.selectedPiece.position;
 
         // Backup current state for undo
         state.undoStack.push({
-          board: JSON.parse(JSON.stringify(board)), // Deep clone of the board
-          turn: turn!,
+          board: JSON.parse(JSON.stringify(state.board)), // Deep clone of the board
+          turn: state.turn!,
+          isGameOver: state.isGameOver!,
         });
 
         // Clear redo stack on new move
         state.redoStack = [];
 
         // Move the piece
-        board[currentX][currentY] = null;
-        board[targetPosition.x][targetPosition.y] = {
-          ...selectedPiece,
+        state.board[currentX][currentY] = null;
+        state.board[targetPosition.x][targetPosition.y] = {
+          ...state.selectedPiece,
           position: targetPosition,
         };
 
@@ -73,8 +89,22 @@ const gameSlice = createSlice({
         state.selectedPiece = null;
         state.possibleMoves = [];
 
+        // Check king position
+        let countKing = 0;
+        state.board.forEach((row) => {
+          row.forEach((piece) => {
+            if (piece?.type === PieceType.KING) {
+              countKing++;
+            }
+          });
+        });
+
+        if (countKing < 2) {
+          state.isGameOver = true;
+        }
+
         // Change turn
-        state.turn = turn === "WHITE" ? "BLACK" : "WHITE";
+        state.turn = state.turn === Color.WHITE ? Color.BLACK : Color.WHITE;
       }
     },
 
@@ -85,12 +115,14 @@ const gameSlice = createSlice({
         state.redoStack.push({
           board: JSON.parse(JSON.stringify(state.board)),
           turn: state.turn!,
+          isGameOver: state.isGameOver!,
         });
 
         // Restore the previous state
         const lastState = state.undoStack.pop();
         state.board = lastState!.board;
         state.turn = lastState!.turn;
+        state.isGameOver = lastState!.isGameOver;
 
         // Deselect any selected piece and clear possible moves
         state.selectedPiece = null;
@@ -105,12 +137,14 @@ const gameSlice = createSlice({
         state.undoStack.push({
           board: JSON.parse(JSON.stringify(state.board)),
           turn: state.turn!,
+          isGameOver: state.isGameOver!,
         });
 
         // Restore the state from the redo stack
         const lastState = state.redoStack.pop();
         state.board = lastState!.board;
         state.turn = lastState!.turn;
+        state.isGameOver = lastState!.isGameOver;
 
         // Deselect any selected piece and clear possible moves
         state.selectedPiece = null;
@@ -123,9 +157,10 @@ const gameSlice = createSlice({
       state.board = initBoard;
       state.selectedPiece = null;
       state.possibleMoves = [];
-      state.turn = "WHITE";
+      state.turn = Color.WHITE;
       state.undoStack = [];
       state.redoStack = [];
+      state.isGameOver = false;
     },
   },
 });

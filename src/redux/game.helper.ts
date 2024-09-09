@@ -38,7 +38,6 @@ export const initBoard: (Piece | null)[][] = [
 ];
 
 // game logic
-
 export const calculatePossibleMoves = (
   piece: Piece,
   board: (Piece | null)[][]

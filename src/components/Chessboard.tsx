@@ -1,5 +1,5 @@
 import { FunctionComponent } from "react";
-import { Coordinates, Piece } from "../types";
+import { Color, Coordinates, Piece } from "../types.d";
 import Square from "./Square";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import {
@@ -16,9 +16,9 @@ type ChessboardProps = {
 
 const Chessboard: FunctionComponent<ChessboardProps> = ({ board }) => {
   const dispatch = useAppDispatch();
-  const selectedPiece = useAppSelector((state) => state.game.selectedPiece);
-  const possibleMoves = useAppSelector((state) => state.game.possibleMoves);
-  const turn = useAppSelector((state) => state.game.turn);
+  const { selectedPiece, possibleMoves, turn, isGameOver } = useAppSelector(
+    (state) => state.game
+  );
 
   const handleHistory = (type: string) => {
     switch (type) {
@@ -45,10 +45,10 @@ const Chessboard: FunctionComponent<ChessboardProps> = ({ board }) => {
       if (isMovePossible(x, y)) {
         dispatch(movePiece({ x, y }));
       } else {
-        dispatch(selectPiece(board[x][y] || null));
+        dispatch(selectPiece(board[x][y]));
       }
     } else {
-      dispatch(selectPiece(board[x][y] || null));
+      dispatch(selectPiece(board[x][y]));
     }
   };
 
@@ -62,7 +62,7 @@ const Chessboard: FunctionComponent<ChessboardProps> = ({ board }) => {
         </div>
         <span>Turn: {turn}</span>
       </div>
-      <div className="chessboard">
+      <div className={`chessboard ${isGameOver ? "gameover" : null}`}>
         {board.map((row, rowIndex) =>
           row.map((piece, colIndex) => {
             const isDark = (rowIndex + colIndex) % 2 === 0;
@@ -78,6 +78,11 @@ const Chessboard: FunctionComponent<ChessboardProps> = ({ board }) => {
               />
             );
           })
+        )}
+        {isGameOver && (
+          <div className="gameover-message">
+            {`${turn === Color.WHITE ? Color.BLACK : Color.WHITE} win`}
+          </div>
         )}
       </div>
     </div>

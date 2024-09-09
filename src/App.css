@@ -30,6 +30,7 @@
   border: 2px solid beige;
   width: fit-content;
   height: fit-content;
+  position: relative;
 }
 
 .square {
@@ -46,7 +47,7 @@
 }
 
 .light-square {
-  background-color: #f0d9b5;
+  background-color: #ebd8ba;
 }
 
 .piece {
@@ -61,7 +62,7 @@
 }
 
 .piece.white {
-  color: brown;
+  color: rgb(255, 255, 255);
 }
 
 .piece.black {
@@ -79,4 +80,33 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
+}
+
+.gameover::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(3, 3, 32, 0.3);
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: white;
+  font-size: 2rem;
+}
+
+.gameover-message {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-50%);
+  z-index: 2;
+  font-size: 2rem;
+  font-weight: bold;
+  text-transform: uppercase;
 }

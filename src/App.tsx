@@ -4,10 +4,10 @@ import { FunctionComponent } from "react";
 import { useAppSelector } from "./redux/hooks";
 
 const App: FunctionComponent = () => {
-  const board = useAppSelector((state) => state.chessBoard);
+  const gameState = useAppSelector((state) => state.game);
   return (
     <div className="App">
-      <Chessboard board={board} />
+      <Chessboard board={gameState.board} />
     </div>
   );
 };

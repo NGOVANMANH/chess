@@ -1,5 +1,5 @@
 import { FunctionComponent } from "react";
-import { PieceType, Color } from "../classes";
+import { PieceType, Color } from "../types";
 
 type PieceProps = {
   type: PieceType;

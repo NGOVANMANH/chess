@@ -16,9 +16,8 @@ type ChessboardProps = {
 
 const Chessboard: FunctionComponent<ChessboardProps> = ({ board }) => {
   const dispatch = useAppDispatch();
-  const { selectedPiece, possibleMoves, turn, isGameOver } = useAppSelector(
-    (state) => state.game
-  );
+  const { selectedPiece, possibleMoves, turn, isGameOver, diedPieces } =
+    useAppSelector((state) => state.game);
 
   const handleHistory = (type: string) => {
     switch (type) {
@@ -85,6 +84,12 @@ const Chessboard: FunctionComponent<ChessboardProps> = ({ board }) => {
           </div>
         )}
       </div>
+      {diedPieces &&
+        diedPieces.map((piece, index) => (
+          <span key={index}>
+            {piece.type} {piece.color}
+          </span>
+        ))}
     </div>
   );
 };

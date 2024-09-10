@@ -11,13 +11,16 @@ type GameState = {
     board: (Piece | null)[][];
     turn: Color;
     isGameOver: boolean | null;
+    diedPieces: Piece[];
   }[];
   redoStack: {
     board: (Piece | null)[][];
     turn: Color;
     isGameOver: boolean | null;
+    diedPieces: Piece[];
   }[];
   isGameOver: boolean | null;
+  diedPieces: Piece[];
 };
 
 const initialGameState: GameState = {
@@ -28,6 +31,19 @@ const initialGameState: GameState = {
   undoStack: [],
   redoStack: [],
   isGameOver: false,
+  diedPieces: [],
+};
+
+const checkGameOver = (board: (Piece | null)[][]): boolean => {
+  let kingCount = 0;
+  board.forEach((row) => {
+    row.forEach((piece) => {
+      if (piece?.type === PieceType.KING) {
+        kingCount++;
+      }
+    });
+  });
+  return kingCount < 2;
 };
 
 const gameSlice = createSlice({
@@ -64,6 +80,7 @@ const gameSlice = createSlice({
     // Move a piece to a new position
     movePiece(state, action: PayloadAction<Coordinates>) {
       const targetPosition = action.payload;
+      const diedPiece = state.board[targetPosition.x][targetPosition.y];
 
       if (state.selectedPiece) {
         const { x: currentX, y: currentY } = state.selectedPiece.position;
@@ -73,6 +90,7 @@ const gameSlice = createSlice({
           board: JSON.parse(JSON.stringify(state.board)), // Deep clone of the board
           turn: state.turn!,
           isGameOver: state.isGameOver!,
+          diedPieces: state.diedPieces!,
         });
 
         // Clear redo stack on new move
@@ -85,21 +103,15 @@ const gameSlice = createSlice({
           position: targetPosition,
         };
 
+        // Update died piece
+        if (diedPiece) state.diedPieces.push(diedPiece);
+
         // Deselect piece and reset possible moves
         state.selectedPiece = null;
         state.possibleMoves = [];
 
         // Check king position
-        let countKing = 0;
-        state.board.forEach((row) => {
-          row.forEach((piece) => {
-            if (piece?.type === PieceType.KING) {
-              countKing++;
-            }
-          });
-        });
-
-        if (countKing < 2) {
+        if (checkGameOver(state.board)) {
           state.isGameOver = true;
         }
 
@@ -116,6 +128,7 @@ const gameSlice = createSlice({
           board: JSON.parse(JSON.stringify(state.board)),
           turn: state.turn!,
           isGameOver: state.isGameOver!,
+          diedPieces: state.diedPieces, // Deep clone diedPiece
         });
 
         // Restore the previous state
@@ -123,6 +136,7 @@ const gameSlice = createSlice({
         state.board = lastState!.board;
         state.turn = lastState!.turn;
         state.isGameOver = lastState!.isGameOver;
+        state.diedPieces = lastState!.diedPieces; // Restore diedPiece
 
         // Deselect any selected piece and clear possible moves
         state.selectedPiece = null;
@@ -138,6 +152,7 @@ const gameSlice = createSlice({
           board: JSON.parse(JSON.stringify(state.board)),
           turn: state.turn!,
           isGameOver: state.isGameOver!,
+          diedPieces: state.diedPieces, // Deep clone diedPiece
         });
 
         // Restore the state from the redo stack
@@ -145,6 +160,7 @@ const gameSlice = createSlice({
         state.board = lastState!.board;
         state.turn = lastState!.turn;
         state.isGameOver = lastState!.isGameOver;
+        state.diedPieces = lastState!.diedPieces; // Restore diedPiece
 
         // Deselect any selected piece and clear possible moves
         state.selectedPiece = null;
@@ -161,6 +177,7 @@ const gameSlice = createSlice({
       state.undoStack = [];
       state.redoStack = [];
       state.isGameOver = false;
+      state.diedPieces = [];
     },
   },
 });

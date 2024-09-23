@@ -1,4 +1,4 @@
-import { Color, Coordinates, Piece, PieceType } from "../types.d";
+import { Color, Coordinates, Piece, PieceType } from "../GameTypes";
 
 export const initBoard: (Piece | null)[][] = [
   [
@@ -38,6 +38,18 @@ export const initBoard: (Piece | null)[][] = [
 ];
 
 // game logic
+export const checkGameOver = (board: (Piece | null)[][]): boolean => {
+  let kingCount = 0;
+  board.forEach((row) => {
+    row.forEach((piece) => {
+      if (piece?.type === PieceType.KING) {
+        kingCount++;
+      }
+    });
+  });
+  return kingCount < 2;
+};
+
 export const calculatePossibleMoves = (
   piece: Piece,
   board: (Piece | null)[][]
@@ -184,4 +196,11 @@ export const calculatePossibleMoves = (
   }
 
   return possibleMoves;
+};
+
+export const IsKingCheckmatePosition = (
+  board: (Piece | null)[][],
+  kingPiece: Piece
+): boolean => {
+  return false;
 };

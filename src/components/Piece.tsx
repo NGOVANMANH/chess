@@ -1,5 +1,5 @@
 import { FunctionComponent } from "react";
-import { PieceType, Color } from "../types";
+import { PieceType, Color } from "../GameTypes";
 
 type PieceProps = {
   type: PieceType;

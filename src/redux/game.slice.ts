@@ -1,49 +1,41 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { Piece, Coordinates, Color, PieceType } from "../types.d";
-import { calculatePossibleMoves, initBoard } from "./game.helper";
+import { Piece, Coordinates, Color, PieceType } from "../GameTypes";
+import {
+  calculatePossibleMoves,
+  checkGameOver,
+  initBoard,
+} from "./game.helper";
+
+type BoardState = {
+  board: (Piece | null)[][];
+  turn: Color;
+  isGameOver: boolean | null;
+  pawnPromotion: Piece | null;
+  diedPieces: Piece[];
+};
 
 type GameState = {
   board: (Piece | null)[][];
-  selectedPiece: Piece | null;
-  possibleMoves: Coordinates[];
   turn: Color | null;
-  undoStack: {
-    board: (Piece | null)[][];
-    turn: Color;
-    isGameOver: boolean | null;
-    diedPieces: Piece[];
-  }[];
-  redoStack: {
-    board: (Piece | null)[][];
-    turn: Color;
-    isGameOver: boolean | null;
-    diedPieces: Piece[];
-  }[];
+  pawnPromotion: Piece | null;
+  possibleMoves: Coordinates[];
   isGameOver: boolean | null;
   diedPieces: Piece[];
+  selectedPiece: Piece | null;
+  undoStack: BoardState[];
+  redoStack: BoardState[];
 };
 
 const initialGameState: GameState = {
   board: initBoard,
   selectedPiece: null,
+  pawnPromotion: null,
   possibleMoves: [],
   turn: Color.WHITE,
   undoStack: [],
   redoStack: [],
   isGameOver: false,
   diedPieces: [],
-};
-
-const checkGameOver = (board: (Piece | null)[][]): boolean => {
-  let kingCount = 0;
-  board.forEach((row) => {
-    row.forEach((piece) => {
-      if (piece?.type === PieceType.KING) {
-        kingCount++;
-      }
-    });
-  });
-  return kingCount < 2;
 };
 
 const gameSlice = createSlice({
@@ -87,10 +79,11 @@ const gameSlice = createSlice({
 
         // Backup current state for undo
         state.undoStack.push({
-          board: JSON.parse(JSON.stringify(state.board)), // Deep clone of the board
+          board: JSON.parse(JSON.stringify(state.board)),
           turn: state.turn!,
           isGameOver: state.isGameOver!,
-          diedPieces: state.diedPieces!,
+          pawnPromotion: JSON.parse(JSON.stringify(state.pawnPromotion)),
+          diedPieces: JSON.parse(JSON.stringify(state.diedPieces)),
         });
 
         // Clear redo stack on new move
@@ -106,14 +99,25 @@ const gameSlice = createSlice({
         // Update died piece
         if (diedPiece) state.diedPieces.push(diedPiece);
 
-        // Deselect piece and reset possible moves
-        state.selectedPiece = null;
-        state.possibleMoves = [];
-
         // Check king position
         if (checkGameOver(state.board)) {
           state.isGameOver = true;
         }
+
+        // check pawn promote
+        if (state.selectedPiece.type === PieceType.PAWN) {
+          const promotableXCoordinate = state.turn === Color.WHITE ? 0 : 7;
+          if (targetPosition.x === promotableXCoordinate) {
+            state.pawnPromotion = {
+              ...state.selectedPiece,
+              position: targetPosition,
+            };
+          }
+        } else state.pawnPromotion = null;
+
+        // Deselect piece and reset possible moves
+        state.selectedPiece = null;
+        state.possibleMoves = [];
 
         // Change turn
         state.turn = state.turn === Color.WHITE ? Color.BLACK : Color.WHITE;
@@ -128,7 +132,8 @@ const gameSlice = createSlice({
           board: JSON.parse(JSON.stringify(state.board)),
           turn: state.turn!,
           isGameOver: state.isGameOver!,
-          diedPieces: state.diedPieces, // Deep clone diedPiece
+          pawnPromotion: JSON.parse(JSON.stringify(state.pawnPromotion)),
+          diedPieces: JSON.parse(JSON.stringify(state.diedPieces)), // Deep clone diedPiece
         });
 
         // Restore the previous state
@@ -136,6 +141,7 @@ const gameSlice = createSlice({
         state.board = lastState!.board;
         state.turn = lastState!.turn;
         state.isGameOver = lastState!.isGameOver;
+        state.pawnPromotion = lastState!.pawnPromotion;
         state.diedPieces = lastState!.diedPieces; // Restore diedPiece
 
         // Deselect any selected piece and clear possible moves
@@ -152,7 +158,8 @@ const gameSlice = createSlice({
           board: JSON.parse(JSON.stringify(state.board)),
           turn: state.turn!,
           isGameOver: state.isGameOver!,
-          diedPieces: state.diedPieces, // Deep clone diedPiece
+          pawnPromotion: JSON.parse(JSON.stringify(state.pawnPromotion!)),
+          diedPieces: JSON.parse(JSON.stringify(state.diedPieces)), // Deep clone diedPiece
         });
 
         // Restore the state from the redo stack
@@ -160,6 +167,7 @@ const gameSlice = createSlice({
         state.board = lastState!.board;
         state.turn = lastState!.turn;
         state.isGameOver = lastState!.isGameOver;
+        state.pawnPromotion = lastState!.pawnPromotion;
         state.diedPieces = lastState!.diedPieces; // Restore diedPiece
 
         // Deselect any selected piece and clear possible moves
@@ -177,12 +185,45 @@ const gameSlice = createSlice({
       state.undoStack = [];
       state.redoStack = [];
       state.isGameOver = false;
+      state.pawnPromotion = null;
       state.diedPieces = [];
+    },
+
+    // Promote pawn
+    pawnPromote(state, action: PayloadAction<PieceType>) {
+      if (state.pawnPromotion) {
+        const { x, y } = state.pawnPromotion.position;
+
+        const piece = state.board[x][y];
+
+        if (!piece || piece.type !== PieceType.PAWN) return;
+
+        if (
+          [
+            PieceType.QUEEN,
+            PieceType.BISHOP,
+            PieceType.KNIGHT,
+            PieceType.ROOK,
+          ].includes(action.payload)
+        ) {
+          state.board[x][y] = {
+            ...piece,
+            type: action.payload,
+          };
+          state.pawnPromotion = null;
+        }
+      }
     },
   },
 });
 
-export const { selectPiece, movePiece, undoMove, redoMove, resetGame } =
-  gameSlice.actions;
+export const {
+  selectPiece,
+  movePiece,
+  undoMove,
+  redoMove,
+  resetGame,
+  pawnPromote,
+} = gameSlice.actions;
 
 export default gameSlice.reducer;

@@ -1,9 +1,10 @@
 import { FunctionComponent } from "react";
-import { Color, Coordinates, Piece } from "../types.d";
+import { Color, Coordinates, Piece, PieceType } from "../GameTypes";
 import Square from "./Square";
 import { useAppDispatch, useAppSelector } from "../redux/hooks";
 import {
   movePiece,
+  pawnPromote,
   redoMove,
   resetGame,
   selectPiece,
@@ -16,10 +17,16 @@ type ChessboardProps = {
 
 const Chessboard: FunctionComponent<ChessboardProps> = ({ board }) => {
   const dispatch = useAppDispatch();
-  const { selectedPiece, possibleMoves, turn, isGameOver, diedPieces } =
-    useAppSelector((state) => state.game);
+  const {
+    selectedPiece,
+    possibleMoves,
+    turn,
+    isGameOver,
+    diedPieces,
+    pawnPromotion,
+  } = useAppSelector((state) => state.game);
 
-  const handleHistory = (type: string) => {
+  const handleBackToHistory = (type: string): void => {
     switch (type) {
       case "undo":
         dispatch(undoMove());
@@ -39,7 +46,7 @@ const Chessboard: FunctionComponent<ChessboardProps> = ({ board }) => {
     );
   };
 
-  const handleSelectSquare = (x: number, y: number) => {
+  const handleSelectSquare = (x: number, y: number): void => {
     if (selectedPiece) {
       if (isMovePossible(x, y)) {
         dispatch(movePiece({ x, y }));
@@ -51,45 +58,119 @@ const Chessboard: FunctionComponent<ChessboardProps> = ({ board }) => {
     }
   };
 
+  const handlePawnPromotion = (type: PieceType): void => {
+    if (pawnPromotion) {
+      dispatch(pawnPromote(type));
+    }
+  };
+
+  const getEdiblePositions = (x: number, y: number): boolean => {
+    if (isMovePossible(x, y)) {
+      const piece = board[x][y];
+      if (piece && turn !== piece.color) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   return (
     <div>
-      <div className="wrapper">
-        <div className="btn-group">
-          <button onClick={() => handleHistory("undo")}>undo</button>
-          <button onClick={() => handleHistory("redo")}>redo</button>
-          <button onClick={() => handleHistory("restart")}>restart</button>
+      <div className="main">
+        <div>
+          {diedPieces
+            .filter((piece) => piece.color === Color.WHITE)
+            .map((piece, index) => (
+              <span key={index}>{piece.type}</span>
+            ))}
         </div>
-        <span>Turn: {turn}</span>
-      </div>
-      <div className={`chessboard ${isGameOver ? "gameover" : null}`}>
-        {board.map((row, rowIndex) =>
-          row.map((piece, colIndex) => {
-            const isDark = (rowIndex + colIndex) % 2 === 0;
-            return (
-              <Square
-                key={`${rowIndex}-${colIndex}`}
-                piece={piece}
-                isDark={isDark}
-                onSelect={() => handleSelectSquare(rowIndex, colIndex)}
-                isShowSteps={
-                  selectedPiece ? isMovePossible(rowIndex, colIndex) : false
-                }
-              />
-            );
-          })
-        )}
-        {isGameOver && (
-          <div className="gameover-message">
-            {`${turn === Color.WHITE ? Color.BLACK : Color.WHITE} win`}
+        <div>
+          <div className="wrapper">
+            <div className="btn-group">
+              <button onClick={() => handleBackToHistory("undo")}>undo</button>
+              <button onClick={() => handleBackToHistory("redo")}>redo</button>
+              <button onClick={() => handleBackToHistory("restart")}>
+                restart
+              </button>
+            </div>
+            <span>Turn: {turn}</span>
           </div>
-        )}
+          <div className={`chessboard ${isGameOver ? "gameover" : ""}`}>
+            {board.map((row, rowIndex) =>
+              row.map((piece, colIndex) => {
+                const isDark = (rowIndex + colIndex) % 2 === 0;
+                return (
+                  <Square
+                    key={`${rowIndex}-${colIndex}`}
+                    piece={piece}
+                    isDark={isDark}
+                    onSelect={() => handleSelectSquare(rowIndex, colIndex)}
+                    isShowSteps={
+                      selectedPiece ? isMovePossible(rowIndex, colIndex) : false
+                    }
+                    isSelectedPiece={
+                      selectedPiece
+                        ? selectedPiece.position.x === rowIndex &&
+                          selectedPiece.position.y === colIndex
+                        : false
+                    }
+                    isEdible={
+                      selectedPiece
+                        ? getEdiblePositions(rowIndex, colIndex)
+                        : false
+                    }
+                  />
+                );
+              })
+            )}
+            {isGameOver ? (
+              <div className="gameover-message">
+                {`${turn === Color.WHITE ? Color.BLACK : Color.WHITE} win`}
+              </div>
+            ) : (
+              pawnPromotion && (
+                <div
+                  className={`pieces-popup ${
+                    pawnPromotion.color === Color.WHITE ? "white" : "black"
+                  }`}
+                >
+                  <div
+                    className="piece-type"
+                    onClick={() => handlePawnPromotion(PieceType.QUEEN)}
+                  >
+                    {PieceType.QUEEN}
+                  </div>
+                  <div
+                    className="piece-type"
+                    onClick={() => handlePawnPromotion(PieceType.BISHOP)}
+                  >
+                    {PieceType.BISHOP}
+                  </div>
+                  <div
+                    className="piece-type"
+                    onClick={() => handlePawnPromotion(PieceType.KNIGHT)}
+                  >
+                    {PieceType.KNIGHT}
+                  </div>
+                  <div
+                    className="piece-type"
+                    onClick={() => handlePawnPromotion(PieceType.ROOK)}
+                  >
+                    {PieceType.ROOK}
+                  </div>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+        <div>
+          {diedPieces
+            .filter((piece) => piece.color === Color.BLACK)
+            .map((piece, index) => (
+              <span key={index}>{piece.type}</span>
+            ))}
+        </div>
       </div>
-      {diedPieces &&
-        diedPieces.map((piece, index) => (
-          <span key={index}>
-            {piece.type} {piece.color}
-          </span>
-        ))}
     </div>
   );
 };
